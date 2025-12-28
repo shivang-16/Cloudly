@@ -9,11 +9,16 @@
     "lint": "eslint . --ext .ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.958.0",
+    "@aws-sdk/s3-request-presigner": "^3.958.0",
+    "@clerk/express": "^1.7.60",
     "concurrently": "^9.2.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "mongoose": "^9.0.2"
+    "express-winston": "^4.2.0",
+    "mongoose": "^9.0.2",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

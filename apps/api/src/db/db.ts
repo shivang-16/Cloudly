@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+import { logger } from "../logger";
+
 const MONGODB_URI = process.env.CLOUDLY_DB;
 
 const connectDB = async () => {
@@ -8,9 +10,9 @@ const connectDB = async () => {
             throw new Error("CLOUDLY_DB environment variable is not set");
         }
         await mongoose.connect(MONGODB_URI);
-        console.log("MongoDB connected");
+        logger.info("MongoDB connected");
     } catch (error) {
-        console.error("MongoDB connection error:", error);
+        logger.error("MongoDB connection error:", error);
         process.exit(1);
     }
 };
