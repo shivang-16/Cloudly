@@ -3,11 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDocumentType = exports.getPublicUrl = exports.generateS3Key = exports.deleteObject = exports.getObjectSignedUrl = exports.getPutObjectSignedUrl = void 0;
+exports.getDocumentType = exports.getPublicUrl = exports.generateS3Key = exports.getObjectStream = exports.deleteObject = exports.getObjectSignedUrl = exports.getPutObjectSignedUrl = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const s3_1 = __importDefault(require("../aws/s3"));
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "cloudly-storage";
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "cloudly-docs";
 /**
  * Generate a presigned URL for uploading a file to S3
  */
@@ -31,6 +31,7 @@ const getPutObjectSignedUrl = async (params) => {
 exports.getPutObjectSignedUrl = getPutObjectSignedUrl;
 /**
  * Generate a presigned URL for downloading a file from S3
+ * URLs expire in 5 minutes for security - requires re-authentication to get new URL
  */
 const getObjectSignedUrl = async (params) => {
     try {
@@ -39,7 +40,7 @@ const getObjectSignedUrl = async (params) => {
             Key: params.key,
         });
         const signedUrl = await (0, s3_request_presigner_1.getSignedUrl)(s3_1.default, command, {
-            expiresIn: params.expiresIn || 3600
+            expiresIn: params.expiresIn || 300 // 5 minutes default for security
         });
         return signedUrl;
     }
@@ -67,6 +68,29 @@ const deleteObject = async (key) => {
     }
 };
 exports.deleteObject = deleteObject;
+/**
+ * Get object stream from S3 for proxying files
+ * Returns the stream and metadata
+ */
+const getObjectStream = async (key) => {
+    try {
+        const command = new client_s3_1.GetObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+        });
+        const response = await s3_1.default.send(command);
+        return {
+            stream: response.Body,
+            contentType: response.ContentType || "application/octet-stream",
+            contentLength: response.ContentLength,
+        };
+    }
+    catch (error) {
+        console.error("[S3] Error getting object stream:", error);
+        throw error;
+    }
+};
+exports.getObjectStream = getObjectStream;
 /**
  * Generate S3 key for a document
  */

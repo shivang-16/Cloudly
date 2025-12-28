@@ -67,6 +67,7 @@ const FileSchema = new mongoose_1.Schema({
     },
     isStarred: { type: Boolean, default: false },
     isTrashed: { type: Boolean, default: false },
+    isPublic: { type: Boolean, default: false },
     trashedAt: { type: Date, default: null },
     sharedWith: [
         {

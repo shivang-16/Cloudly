@@ -11,6 +11,7 @@ export interface IFile extends Document {
     folderId?: Types.ObjectId | null;
     isStarred: boolean;
     isTrashed: boolean;
+    isPublic: boolean;
     trashedAt?: Date;
     sharedWith: {
         userId: string;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toggleFileStar = exports.renameFile = exports.deleteFile = exports.getDownloadUrl = exports.getFiles = exports.confirmUpload = exports.getUploadUrl = void 0;
+exports.getStorageInfo = exports.restoreFile = exports.streamPublicFile = exports.streamFile = exports.getPublicFile = exports.toggleFileShare = exports.toggleFileStar = exports.renameFile = exports.deleteFile = exports.getDownloadUrl = exports.getFiles = exports.confirmUpload = exports.getUploadUrl = void 0;
 const models_1 = require("../models");
 const s3_utils_1 = require("../utils/s3.utils");
 /**
@@ -104,16 +104,26 @@ exports.confirmUpload = confirmUpload;
 const getFiles = async (req, res) => {
     try {
         const user = req.user;
-        const { folderId, starred, trashed } = req.query;
+        const { folderId, starred, trashed, search, page = "1", limit = "20" } = req.query;
         if (!user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip = (pageNum - 1) * limitNum;
         const query = { ownerId: user._id };
-        if (folderId) {
-            query.folderId = folderId;
+        // Search query - search in name
+        if (search && typeof search === "string" && search.trim()) {
+            query.name = { $regex: search.trim(), $options: "i" };
         }
-        else if (!trashed && !starred) {
-            query.folderId = null; // Root level files
+        else {
+            // Only apply folder filter if not searching
+            if (folderId) {
+                query.folderId = folderId;
+            }
+            else if (!trashed && !starred) {
+                query.folderId = null; // Root level files
+            }
         }
         if (starred === "true") {
             query.isStarred = true;
@@ -124,8 +134,20 @@ const getFiles = async (req, res) => {
         else {
             query.isTrashed = false;
         }
-        const files = await models_1.File.find(query).sort({ updatedAt: -1 });
-        res.json({ files });
+        const [files, total] = await Promise.all([
+            models_1.File.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limitNum),
+            models_1.File.countDocuments(query),
+        ]);
+        res.json({
+            files,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total,
+                totalPages: Math.ceil(total / limitNum),
+                hasMore: skip + files.length < total,
+            }
+        });
     }
     catch (error) {
         console.error("[Files] Error fetching files:", error);
@@ -136,6 +158,7 @@ exports.getFiles = getFiles;
 /**
  * Get download URL for a file
  * GET /api/files/:id/download
+ * Owner gets 7-day URL, shared users get 5-minute URL
  */
 const getDownloadUrl = async (req, res) => {
     try {
@@ -154,7 +177,12 @@ const getDownloadUrl = async (req, res) => {
         if (!file) {
             return res.status(404).json({ message: "File not found" });
         }
-        const downloadUrl = await (0, s3_utils_1.getObjectSignedUrl)({ key: file.s3Key });
+        // Determine URL expiry based on ownership
+        // Owner or public file = 7 days (604800 seconds - max allowed by S3)
+        // Shared with user = 5 minutes
+        const isOwner = file.ownerId === user._id;
+        const expiresIn = isOwner || file.isPublic ? 604800 : 300;
+        const downloadUrl = await (0, s3_utils_1.getObjectSignedUrl)({ key: file.s3Key, expiresIn });
         res.json({ downloadUrl, fileName: file.name });
     }
     catch (error) {
@@ -264,4 +292,216 @@ const toggleFileStar = async (req, res) => {
     }
 };
 exports.toggleFileStar = toggleFileStar;
+/**
+ * Toggle public/private sharing for a file
+ * PATCH /api/files/:id/share
+ */
+const toggleFileShare = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isPublic } = req.body;
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        if (typeof isPublic !== "boolean") {
+            return res.status(400).json({ message: "isPublic must be a boolean" });
+        }
+        const file = await models_1.File.findOne({
+            _id: id,
+            ownerId: user._id,
+        });
+        if (!file) {
+            return res.status(404).json({ message: "File not found" });
+        }
+        file.isPublic = isPublic;
+        await file.save();
+        res.json({
+            message: isPublic ? "File is now public" : "File is now private",
+            file,
+            publicUrl: isPublic ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/public/file/${file._id}` : null,
+        });
+    }
+    catch (error) {
+        console.error("[Files] Error toggling share:", error);
+        res.status(500).json({ message: "Failed to update file sharing" });
+    }
+};
+exports.toggleFileShare = toggleFileShare;
+/**
+ * Get public file (no auth required)
+ * GET /api/files/public/:id
+ * Public files get 7-day URLs
+ */
+const getPublicFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const file = await models_1.File.findById(id);
+        if (!file) {
+            return res.status(404).json({ message: "File not found" });
+        }
+        if (!file.isPublic) {
+            return res.status(403).json({ message: "This file is not publicly accessible" });
+        }
+        // Public files get 7-day presigned URL (max allowed by S3)
+        const downloadUrl = await (0, s3_utils_1.getObjectSignedUrl)({ key: file.s3Key, expiresIn: 604800 });
+        res.json({
+            file: {
+                _id: file._id,
+                name: file.name,
+                type: file.type,
+                mimeType: file.mimeType,
+                size: file.size,
+            },
+            downloadUrl,
+        });
+    }
+    catch (error) {
+        console.error("[Files] Error getting public file:", error);
+        res.status(500).json({ message: "Failed to get file" });
+    }
+};
+exports.getPublicFile = getPublicFile;
+/**
+ * Stream file through backend (authenticated)
+ * GET /api/files/:id/stream
+ * Proxies the file through the server - auth checked on every request
+ */
+const streamFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+        console.log(user, "here is teh user");
+        if (!user) {
+            console.log(" user is not found");
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        const file = await models_1.File.findOne({
+            _id: id,
+            $or: [
+                { ownerId: user._id },
+                { "sharedWith.userId": user._id },
+            ],
+        });
+        if (!file) {
+            return res.status(404).json({ message: "File not found" });
+        }
+        // For private files, only owner can access
+        if (!file.isPublic && file.ownerId !== user._id) {
+            // Check if user is in sharedWith
+            const isShared = file.sharedWith.some(s => s.userId === user._id);
+            if (!isShared) {
+                return res.status(403).json({ message: "Access denied" });
+            }
+        }
+        // Get stream from S3
+        const { stream, contentType, contentLength } = await (0, s3_utils_1.getObjectStream)(file.s3Key);
+        if (!stream) {
+            return res.status(500).json({ message: "Failed to get file stream" });
+        }
+        // Set response headers
+        res.setHeader("Content-Type", contentType);
+        if (contentLength) {
+            res.setHeader("Content-Length", contentLength);
+        }
+        res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.name)}"`);
+        res.setHeader("Cache-Control", "private, max-age=3600");
+        // Pipe the stream to response
+        // @ts-ignore - Body is a readable stream
+        stream.pipe(res);
+    }
+    catch (error) {
+        console.error("[Files] Error streaming file:", error);
+        res.status(500).json({ message: "Failed to stream file" });
+    }
+};
+exports.streamFile = streamFile;
+/**
+ * Stream public file (no auth required)
+ * GET /api/files/public/:id/stream
+ * Proxies public files through the server
+ */
+const streamPublicFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const file = await models_1.File.findById(id);
+        if (!file) {
+            return res.status(404).json({ message: "File not found" });
+        }
+        if (!file.isPublic) {
+            return res.status(403).json({ message: "This file is not publicly accessible" });
+        }
+        // Get stream from S3
+        const { stream, contentType, contentLength } = await (0, s3_utils_1.getObjectStream)(file.s3Key);
+        if (!stream) {
+            return res.status(500).json({ message: "Failed to get file stream" });
+        }
+        // Set response headers
+        res.setHeader("Content-Type", contentType);
+        if (contentLength) {
+            res.setHeader("Content-Length", contentLength);
+        }
+        res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.name)}"`);
+        res.setHeader("Cache-Control", "public, max-age=86400"); // 1 day cache for public files
+        // Pipe the stream to response
+        // @ts-ignore - Body is a readable stream
+        stream.pipe(res);
+    }
+    catch (error) {
+        console.error("[Files] Error streaming public file:", error);
+        res.status(500).json({ message: "Failed to stream file" });
+    }
+};
+exports.streamPublicFile = streamPublicFile;
+/**
+ * Restore a file from trash
+ * PATCH /api/files/:id/restore
+ */
+const restoreFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        const file = await models_1.File.findOne({
+            _id: id,
+            ownerId: user._id,
+            isTrashed: true,
+        });
+        if (!file) {
+            return res.status(404).json({ message: "File not found in trash" });
+        }
+        file.isTrashed = false;
+        file.trashedAt = undefined;
+        await file.save();
+        res.json({ message: "File restored", file });
+    }
+    catch (error) {
+        console.error("[Files] Error restoring file:", error);
+        res.status(500).json({ message: "Failed to restore file" });
+    }
+};
+exports.restoreFile = restoreFile;
+/**
+ * Get user storage info
+ * GET /api/files/storage
+ */
+const getStorageInfo = async (req, res) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        res.json({
+            storageUsed: user.storageUsed || 0,
+            storageLimit: user.storageLimit || 20 * 1024 * 1024 * 1024, // Default 20GB
+        });
+    }
+    catch (error) {
+        console.error("[Files] Error getting storage info:", error);
+        res.status(500).json({ message: "Failed to get storage info" });
+    }
+};
+exports.getStorageInfo = getStorageInfo;
 //# sourceMappingURL=file.controller.js.map

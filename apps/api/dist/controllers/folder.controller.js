@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toggleFolderStar = exports.deleteFolder = exports.renameFolder = exports.getFolder = exports.getFolders = exports.createFolder = void 0;
 const models_1 = require("../models");
+const logger_1 = require("../logger");
 /**
  * Create a new folder
  * POST /api/folders
@@ -51,16 +52,26 @@ exports.createFolder = createFolder;
 const getFolders = async (req, res) => {
     try {
         const user = req.user;
-        const { parentFolderId, starred, trashed } = req.query;
+        const { parentFolderId, starred, trashed, search, page = "1", limit = "20" } = req.query;
         if (!user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip = (pageNum - 1) * limitNum;
         const query = { ownerId: user._id };
-        if (parentFolderId) {
-            query.parentFolderId = parentFolderId;
+        // Search query - search in name
+        if (search && typeof search === "string" && search.trim()) {
+            query.name = { $regex: search.trim(), $options: "i" };
         }
-        else if (!trashed && !starred) {
-            query.parentFolderId = null; // Root level folders
+        else {
+            // Only apply folder filter if not searching
+            if (parentFolderId) {
+                query.parentFolderId = parentFolderId;
+            }
+            else if (!trashed && !starred) {
+                query.parentFolderId = null; // Root level folders
+            }
         }
         if (starred === "true") {
             query.isStarred = true;
@@ -71,8 +82,20 @@ const getFolders = async (req, res) => {
         else {
             query.isTrashed = false;
         }
-        const folders = await models_1.Folder.find(query).sort({ updatedAt: -1 });
-        res.json({ folders });
+        const [folders, total] = await Promise.all([
+            models_1.Folder.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limitNum),
+            models_1.Folder.countDocuments(query),
+        ]);
+        res.json({
+            folders,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total,
+                totalPages: Math.ceil(total / limitNum),
+                hasMore: skip + folders.length < total,
+            }
+        });
     }
     catch (error) {
         console.error("[Folders] Error fetching folders:", error);
@@ -101,6 +124,7 @@ const getFolder = async (req, res) => {
         if (!folder) {
             return res.status(404).json({ message: "Folder not found" });
         }
+        logger_1.logger.debug(folder);
         res.json({ folder });
     }
     catch (error) {
@@ -156,7 +180,18 @@ const deleteFolder = async (req, res) => {
             return res.status(404).json({ message: "Folder not found" });
         }
         if (permanent === "true") {
-            // TODO: Also delete all files and subfolders within this folder
+            // Check if folder has files or subfolders
+            const filesCount = await models_1.File.countDocuments({ folderId: id, ownerId: user._id });
+            const subfoldersCount = await models_1.Folder.countDocuments({ parentId: id, ownerId: user._id });
+            if (filesCount > 0 || subfoldersCount > 0) {
+                return res.status(400).json({
+                    message: "Folder is not empty. Please delete all files and subfolders first.",
+                    hasFiles: filesCount > 0,
+                    hasSubfolders: subfoldersCount > 0,
+                    filesCount,
+                    subfoldersCount,
+                });
+            }
             await folder.deleteOne();
             res.json({ message: "Folder permanently deleted" });
         }
