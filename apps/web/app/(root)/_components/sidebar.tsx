@@ -239,13 +239,14 @@ export function Sidebar({ storageUsed = 0 }: { storageUsed?: number }) {
           )}
         </div>
 
-        {/* Modals */}
-        <NewFolderModal 
-          isOpen={isNewFolderModalOpen} 
-          onClose={() => setIsNewFolderModalOpen(false)}
-          onCreate={handleCreateFolder}
-        />
       </aside>
+
+      {/* Modals */}
+      <NewFolderModal 
+        isOpen={isNewFolderModalOpen} 
+        onClose={() => setIsNewFolderModalOpen(false)}
+        onCreate={handleCreateFolder}
+      />
     </>
   );
 }
