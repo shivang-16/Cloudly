@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Folder } from "../models";
+import { Folder, File } from "../models";
 import { logger } from "../logger";
 
 /**
@@ -183,7 +183,20 @@ export const deleteFolder = async (req: Request, res: Response) => {
     }
 
     if (permanent === "true") {
-      // TODO: Also delete all files and subfolders within this folder
+      // Check if folder has files or subfolders
+      const filesCount = await File.countDocuments({ folderId: id, ownerId: user._id });
+      const subfoldersCount = await Folder.countDocuments({ parentId: id, ownerId: user._id });
+      
+      if (filesCount > 0 || subfoldersCount > 0) {
+        return res.status(400).json({ 
+          message: "Folder is not empty. Please delete all files and subfolders first.",
+          hasFiles: filesCount > 0,
+          hasSubfolders: subfoldersCount > 0,
+          filesCount,
+          subfoldersCount,
+        });
+      }
+      
       await folder.deleteOne();
       res.json({ message: "Folder permanently deleted" });
     } else {

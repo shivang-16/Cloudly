@@ -8,9 +8,9 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col h-full">
-      <h1 className="text-2xl text-gray-700 dark:text-gray-200 mb-6 px-1">Welcome to Drive</h1>
+      <h1 className="text-2xl text-gray-700 dark:text-gray-200 mb-2 px-1">Welcome to Drive</h1>
       
-      <SuggestedFolders />
+      <SuggestedFolders folders={(folders || []).map(f => ({ id: f.id, name: f.name }))} />
       
       <FileList initialFolders={folders || []} initialFiles={files || []} />
     </div>

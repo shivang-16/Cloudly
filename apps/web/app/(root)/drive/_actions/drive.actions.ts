@@ -12,6 +12,7 @@ export interface DriveItem {
   owner: string; // Mapped from ownerId (or populated)
   updatedAt: string;
   isStarred: boolean;
+  isPublic?: boolean;
 }
 
 export async function getDriveItemsAction(folderId?: string) {
@@ -65,6 +66,7 @@ export async function getDriveItemsAction(folderId?: string) {
           owner: "me",
           updatedAt: f.updatedAt,
           isStarred: f.isStarred,
+          isPublic: f.isPublic || false,
         }));
       } else if (filesData.files && Array.isArray(filesData.files)) {
         // Handle alternative API response format
@@ -77,6 +79,7 @@ export async function getDriveItemsAction(folderId?: string) {
           owner: "me",
           updatedAt: f.updatedAt,
           isStarred: f.isStarred,
+          isPublic: f.isPublic || false,
         }));
       }
     } catch (fileError) {
