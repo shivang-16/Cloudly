@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const client_s3_1 = require("@aws-sdk/client-s3");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    console.warn("[S3] AWS credentials not configured. S3 operations will fail.");
+}
+const S3 = new client_s3_1.S3Client({
+    region: process.env.AWS_REGION || "ap-south-1",
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+    },
+});
+exports.default = S3;
+//# sourceMappingURL=s3.js.map
