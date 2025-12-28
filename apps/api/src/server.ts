@@ -2,7 +2,9 @@ import http from "http";
 import app from "./app";
 import connectDB from "./db/db";
 
-const PORT = 3001; // Explicitly set to 3001 to avoid conflict with frontend (3000)
+import { logger } from "./logger";
+
+const PORT = 4001; // Explicitly set to 3001 to avoid conflict with frontend (3000)
 
 const server = http.createServer(app);
 
@@ -11,10 +13,10 @@ const startServer = async () => {
         await connectDB();
         
         server.listen(PORT, () => {
-             console.log(`Server running on port ${PORT}`);
+             logger.info(`Server running on port ${PORT}`);
         });
     } catch (error) {
-        console.error("Failed to start server:", error);
+        logger.error("Failed to start server:", error);
         process.exit(1);
     }
 }
