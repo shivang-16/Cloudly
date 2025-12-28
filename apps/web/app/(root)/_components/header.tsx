@@ -1,10 +1,77 @@
 "use client";
 
-import React from "react";
-import { Search, Settings, HelpCircle, Menu, SlidersHorizontal, Sun, Moon } from "lucide-react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
+import { Search, Menu, Sun, Moon, X } from "lucide-react";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
+import { useRouter, useSearchParams } from "next/navigation";
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+function HeaderSearch() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search') || "";
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const lastPushedRef = useRef(initialSearch);
+  
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Navigate to search results on debounced query change
+  useEffect(() => {
+    const trimmed = debouncedSearch.trim();
+    
+    // Only push if the value actually changed from what we last pushed
+    if (trimmed !== lastPushedRef.current) {
+      lastPushedRef.current = trimmed;
+      if (trimmed) {
+        router.push(`/drive?search=${encodeURIComponent(trimmed)}`);
+      } else {
+        router.push('/drive');
+      }
+    }
+  }, [debouncedSearch, router]);
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    lastPushedRef.current = "";
+    router.push('/drive');
+  };
+
+  return (
+    <div className="flex-1 max-w-2xl px-4">
+      <div className="relative group">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search size={24} className="text-gray-500 dark:text-gray-400" />
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="block w-full pl-12 pr-12 py-3 rounded-full bg-[#e9eef6] dark:bg-[#282a2c] focus:bg-white dark:focus:bg-[#1e1e1e] border border-transparent focus:border-transparent focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-600 placeholder-gray-600 dark:placeholder-gray-400 text-gray-800 dark:text-gray-200 sm:text-base transition-all shadow-sm focus:shadow-md"
+          placeholder="Search in Cloudly"
+        />
+        <div className="absolute inset-y-0 right-0 pr-4 flex items-center gap-2">
+          {searchQuery && (
+            <button onClick={clearSearch} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full">
+              <X size={18} className="text-gray-500" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Header() {
   const { theme, setTheme } = useTheme();
@@ -21,39 +88,24 @@ export function Header() {
         </div>
         <Link href="/drive" className="flex items-center gap-2">
            <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/d/da/Google_Drive_logo_%282020%29.svg" 
-            alt="Google Drive" 
-            className="w-8 h-8"
+            src="/cloudly_logo.png" 
+            alt="Cloudly" 
+            className="w-16 h-15"
           />
-          <span className="text-xl font-normal text-gray-600 dark:text-gray-200">Drive</span>
+          <span className="text-xl font-normal text-gray-600 dark:text-gray-200">Cloudly</span>
         </Link>
       </div>
 
-      <div className="flex-1 max-w-2xl px-4">
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={24} className="text-gray-500 dark:text-gray-400" />
-          </div>
-          <input
-            type="text"
-            className="block w-full pl-12 pr-12 py-3 rounded-full bg-[#e9eef6] dark:bg-[#282a2c] focus:bg-white dark:focus:bg-[#1e1e1e] border border-transparent focus:border-transparent focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-600 placeholder-gray-600 dark:placeholder-gray-400 text-gray-800 dark:text-gray-200 sm:text-base transition-all shadow-sm focus:shadow-md"
-            placeholder="Search in Drive"
-          />
-          <div className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer">
-            <SlidersHorizontal size={20} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
-          </div>
+      <Suspense fallback={
+        <div className="flex-1 max-w-2xl px-4">
+          <div className="h-12 bg-gray-100 dark:bg-gray-800 rounded-full animate-pulse"></div>
         </div>
-      </div>
+      }>
+        <HeaderSearch />
+      </Suspense>
 
       <div className="flex items-center gap-2 pl-4">
           <div className="flex items-center gap-1">
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300">
-               <HelpCircle size={24} />
-            </button>
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300">
-               <Settings size={24} />
-            </button>
-            {/* Theme Toggle */}
             <button 
               onClick={toggleTheme}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300"
@@ -64,7 +116,6 @@ export function Header() {
           </div>
           
           <div className="pl-3 flex items-center gap-3">
-            {/* Clerk User Button */}
             <UserButton 
               afterSignOutUrl="/"
               appearance={{

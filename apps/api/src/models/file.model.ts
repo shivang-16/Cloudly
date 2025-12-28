@@ -26,6 +26,7 @@ export interface IFile extends Document {
   folderId?: Types.ObjectId | null; // Which folder this file belongs to
   isStarred: boolean;
   isTrashed: boolean;
+  isPublic: boolean; // Public sharing toggle
   trashedAt?: Date;
   sharedWith: {
     userId: string;
@@ -68,6 +69,7 @@ const FileSchema: Schema = new Schema(
     },
     isStarred: { type: Boolean, default: false },
     isTrashed: { type: Boolean, default: false },
+    isPublic: { type: Boolean, default: false },
     trashedAt: { type: Date, default: null },
     sharedWith: [
       {

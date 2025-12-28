@@ -59,6 +59,14 @@ export const apiPut = async (endpoint: string, body?: any, options: Omit<ApiRequ
   });
 };
 
+export const apiPatch = async (endpoint: string, body?: object, options: Omit<ApiRequestOptions, 'method'> = {}) => {
+  return apiRequest(endpoint, { 
+    ...options, 
+    method: 'PATCH', 
+    body: body ? JSON.stringify(body) : undefined 
+  });
+};
+
 export const apiDelete = async (endpoint: string, options: Omit<ApiRequestOptions, 'method'> = {}) => {
   return apiRequest(endpoint, { ...options, method: 'DELETE' });
 };

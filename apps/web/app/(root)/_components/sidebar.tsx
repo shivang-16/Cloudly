@@ -4,14 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Plus,
   Home,
-  HardDrive,
-  Monitor,
-  Users,
-  Clock,
   Star,
-  AlertCircle,
   Trash2,
-  Cloud,
   FolderPlus,
   FileUp,
   FolderUp,
@@ -25,23 +19,14 @@ import { useUpload } from "../_context/upload-context";
 
 const navItems = [
   { name: "Home", icon: Home, href: "/drive" },
-  { name: "My Drive", icon: HardDrive, href: "/drive/my-drive" },
-  { name: "Computers", icon: Monitor, href: "/drive/computers" },
-];
-
-const sharedItems = [
-  { name: "Shared with me", icon: Users, href: "/drive/shared-with-me" },
-  { name: "Recent", icon: Clock, href: "/drive/recent" },
   { name: "Starred", icon: Star, href: "/drive/starred" },
-];
-
-const otherItems = [
-  { name: "Spam", icon: AlertCircle, href: "/drive/spam" },
   { name: "Bin", icon: Trash2, href: "/drive/bin" },
-  { name: "Storage", icon: Cloud, href: "/drive/storage" },
 ];
 
-export function Sidebar() {
+const STORAGE_LIMIT_GB = 20;
+const STORAGE_LIMIT_BYTES = STORAGE_LIMIT_GB * 1024 * 1024 * 1024;
+
+export function Sidebar({ storageUsed = 0 }: { storageUsed?: number }) {
   const pathname = usePathname();
   const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
@@ -50,6 +35,19 @@ export function Sidebar() {
   const folderInputRef = useRef<HTMLInputElement>(null);
   
   const { addFiles, addFolderFiles } = useUpload();
+
+  const storagePercentage = Math.min((storageUsed / STORAGE_LIMIT_BYTES) * 100, 100);
+  const isStorageFull = storageUsed >= STORAGE_LIMIT_BYTES;
+
+  const formatStorage = (bytes: number) => {
+    if (bytes === 0) return "0 MB";
+    const k = 1024;
+    const mb = bytes / (k * k);
+    const gb = bytes / (k * k * k);
+    // Show MB until we reach 1 GB
+    if (gb < 1) return mb.toFixed(1) + " MB";
+    return gb.toFixed(2) + " GB";
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -65,19 +63,25 @@ export function Sidebar() {
 
   // Handle File Upload - use upload context
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isStorageFull) {
+      alert("Storage is full. Please delete some files to upload more.");
+      return;
+    }
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       addFiles(files);
-      // Reset input so same file can be selected again
       e.target.value = "";
     }
   };
 
   // Handle Folder Upload - use upload context
   const handleFolderUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isStorageFull) {
+      alert("Storage is full. Please delete some files to upload more.");
+      return;
+    }
     if (e.target.files && e.target.files.length > 0) {
       addFolderFiles(e.target.files);
-      // Reset input so same folder can be selected again
       e.target.value = "";
     }
   };
@@ -90,15 +94,12 @@ export function Sidebar() {
 
   const handleCreateFolder = async (name: string) => {
     const parentFolderId = getCurrentFolderId();
-    console.log("Creating folder:", name, "in parent:", parentFolderId || "root");
     try {
         const result = await createFolderAction(name, parentFolderId);
         if (result.success) {
-            console.log("Folder created", result.folder);
             return { success: true };
         } else {
-            console.error(result.error);
-             return { success: false, error: result.error };
+            return { success: false, error: result.error };
         }
     } catch (e) {
         console.error(e);
@@ -106,13 +107,13 @@ export function Sidebar() {
     }
   };
 
-  const NavItem = ({ name, icon: Icon, href }: { name: string; icon: any; href: string }) => {
+  const NavItem = ({ name, icon: Icon, href }: { name: string; icon: React.ElementType; href: string }) => {
     const isActive = pathname === href;
     return (
       <Link
         href={href}
         className={clsx(
-          "flex items-center gap-3 px-4 py-1.5 rounded-r-full text-sm font-medium transition-colors mb-0.5 mr-4",
+          "flex items-center gap-3 px-4 py-2 rounded-r-full text-sm font-medium transition-colors mb-0.5 mr-4",
           isActive
             ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-100"
             : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -138,19 +139,25 @@ export function Sidebar() {
         ref={folderInputRef} 
         onChange={handleFolderUpload} 
         className="hidden" 
-        {...({ webkitdirectory: "", directory: "" } as any)} 
+        {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)} 
       />
 
       <div className="pl-3 mb-6 relative" ref={menuRef}>
         <button 
             onClick={() => setIsNewMenuOpen(!isNewMenuOpen)}
-            className="flex items-center gap-3 bg-white dark:bg-[#1e1e1e] hover:bg-gray-50 dark:hover:bg-[#2d2d2d] shadow-md dark:shadow-none dark:border-gray-600 border border-transparent dark:border rounded-2xl px-4 py-4 transition-all active:shadow-sm"
+            disabled={isStorageFull}
+            className={clsx(
+              "flex items-center gap-3 bg-white dark:bg-[#1e1e1e] shadow-md dark:shadow-none dark:border-gray-600 border border-transparent dark:border rounded-2xl px-4 py-4 transition-all",
+              isStorageFull 
+                ? "opacity-50 cursor-not-allowed" 
+                : "hover:bg-gray-50 dark:hover:bg-[#2d2d2d] active:shadow-sm"
+            )}
         >
           <Plus size={24} className="text-gray-600 dark:text-gray-200" />
           <span className="font-medium text-gray-700 dark:text-gray-200">New</span>
         </button>
 
-        {isNewMenuOpen && (
+        {isNewMenuOpen && !isStorageFull && (
             <div className="absolute top-full left-4 mt-1 w-64 bg-white dark:bg-[#1e1e1e] rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <button 
                   onClick={() => {
@@ -190,36 +197,28 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1">
-        <div className="mb-2">
-            {navItems.map((item) => (
-            <NavItem key={item.name} {...item} />
-            ))}
-        </div>
-        
-        <div className="mb-2 pt-2">
-            {sharedItems.map((item) => (
-            <NavItem key={item.name} {...item} />
-            ))}
-        </div>
-
-        <div className="mb-2 pt-2">
-            {otherItems.map((item) => (
-            <NavItem key={item.name} {...item} />
-            ))}
-        </div>
+        {navItems.map((item) => (
+          <NavItem key={item.name} {...item} />
+        ))}
       </nav>
 
       {/* Storage Progress */}
       <div className="px-6 mt-4">
         <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          13.14 GB of 2 TB used
+          {formatStorage(storageUsed)} of {STORAGE_LIMIT_GB} GB used
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 mb-4 overflow-hidden">
-            <div className="bg-blue-600 h-1 rounded-full" style={{ width: '1%' }}></div>
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4 overflow-hidden">
+          <div 
+            className={clsx(
+              "h-1.5 rounded-full transition-all",
+              storagePercentage > 90 ? "bg-red-500" : storagePercentage > 70 ? "bg-yellow-500" : "bg-blue-600"
+            )} 
+            style={{ width: `${Math.max(storagePercentage, 1)}%` }}
+          />
         </div>
-        <button className="text-blue-600 dark:text-blue-300 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-full px-4 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 w-fit">
-          Get more storage
-        </button>
+        {isStorageFull && (
+          <p className="text-xs text-red-500 mb-2">Storage full! Delete files to upload more.</p>
+        )}
       </div>
 
       {/* Modals */}
@@ -231,3 +230,4 @@ export function Sidebar() {
     </aside>
   );
 }
+

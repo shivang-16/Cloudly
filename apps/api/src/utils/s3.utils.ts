@@ -32,6 +32,7 @@ export const getPutObjectSignedUrl = async (params: SignedUrlParams): Promise<st
 
 /**
  * Generate a presigned URL for downloading a file from S3
+ * URLs expire in 5 minutes for security - requires re-authentication to get new URL
  */
 export const getObjectSignedUrl = async (params: SignedUrlParams): Promise<string> => {
   try {
@@ -40,7 +41,7 @@ export const getObjectSignedUrl = async (params: SignedUrlParams): Promise<strin
       Key: params.key,
     });
     const signedUrl = await getSignedUrl(S3, command, { 
-      expiresIn: params.expiresIn || 3600 
+      expiresIn: params.expiresIn || 300 // 5 minutes default for security
     });
     return signedUrl;
   } catch (error) {
@@ -62,6 +63,28 @@ export const deleteObject = async (key: string): Promise<void> => {
     console.log(`[S3] Deleted object: ${key}`);
   } catch (error) {
     console.error("[S3] Error deleting object:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get object stream from S3 for proxying files
+ * Returns the stream and metadata
+ */
+export const getObjectStream = async (key: string) => {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    const response = await S3.send(command);
+    return {
+      stream: response.Body,
+      contentType: response.ContentType || "application/octet-stream",
+      contentLength: response.ContentLength,
+    };
+  } catch (error) {
+    console.error("[S3] Error getting object stream:", error);
     throw error;
   }
 };
