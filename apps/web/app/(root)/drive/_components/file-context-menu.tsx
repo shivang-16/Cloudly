@@ -65,7 +65,7 @@ export function FileContextMenu({ file }: FileContextMenuProps) {
   const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (file.isPublic) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4001';
       window.open(`${apiUrl}/api/files/public/${file.id}/stream`, '_blank');
     } else {
       window.open(`/api/files/${file.id}/stream`, '_blank');

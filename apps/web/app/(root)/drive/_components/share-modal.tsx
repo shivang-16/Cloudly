@@ -70,7 +70,7 @@ export function ShareModal({ isOpen, onClose, file }: ShareModalProps) {
       setIsPublic(newIsPublic);
       if (newIsPublic) {
         // Use direct API stream URL for public files
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4001';
         setPublicUrl(`${apiUrl}/api/files/public/${file.id}/stream`);
       } else {
         setPublicUrl(null);

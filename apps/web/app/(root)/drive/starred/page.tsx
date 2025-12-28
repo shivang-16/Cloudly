@@ -34,7 +34,7 @@ function StarredFileRow({ item }: { item: StarredItem }) {
 
   const handleOpen = () => {
     if (item.isPublic) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4001';
       window.open(`${apiUrl}/api/files/public/${item.id}/stream`, '_blank');
     } else {
       window.open(`/api/files/${item.id}/stream`, '_blank');
