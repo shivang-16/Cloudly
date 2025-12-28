@@ -139,7 +139,7 @@ export function Sidebar({ storageUsed = 0 }: { storageUsed?: number }) {
 
       <aside 
         className={clsx(
-          "flex flex-col pt-2 pb-4 overflow-y-auto bg-white dark:bg-[#18191a] transition-transform duration-300 ease-in-out z-30",
+          "flex flex-col pt-2 pb-4 overflow-y-auto bg-white dark:bg-[#18191a] transition-transform duration-300 ease-in-out z-50",
           "fixed inset-y-0 left-0 w-64 h-full",
           "lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"

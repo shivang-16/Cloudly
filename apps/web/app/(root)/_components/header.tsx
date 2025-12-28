@@ -84,7 +84,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full h-16 flex items-center justify-between px-4 py-2 bg-white dark:bg-[#18191a] border-b border-transparent dark:border-gray-800 transition-colors">
-      <div className="flex items-center gap-3 w-60">
+      <div className="flex items-center gap-3 w-auto md:w-60">
         <button 
           onClick={toggle}
           className="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full lg:hidden"
