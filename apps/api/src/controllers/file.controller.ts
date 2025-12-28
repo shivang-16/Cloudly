@@ -123,18 +123,28 @@ export const confirmUpload = async (req: Request, res: Response) => {
 export const getFiles = async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    const { folderId, starred, trashed } = req.query;
+    const { folderId, starred, trashed, search, page = "1", limit = "20" } = req.query;
 
     if (!user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
     const query: any = { ownerId: user._id };
 
-    if (folderId) {
-      query.folderId = folderId;
-    } else if (!trashed && !starred) {
-      query.folderId = null; // Root level files
+    // Search query - search in name
+    if (search && typeof search === "string" && search.trim()) {
+      query.name = { $regex: search.trim(), $options: "i" };
+    } else {
+      // Only apply folder filter if not searching
+      if (folderId) {
+        query.folderId = folderId;
+      } else if (!trashed && !starred) {
+        query.folderId = null; // Root level files
+      }
     }
 
     if (starred === "true") {
@@ -147,9 +157,21 @@ export const getFiles = async (req: Request, res: Response) => {
       query.isTrashed = false;
     }
 
-    const files = await File.find(query).sort({ updatedAt: -1 });
+    const [files, total] = await Promise.all([
+      File.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limitNum),
+      File.countDocuments(query),
+    ]);
 
-    res.json({ files });
+    res.json({ 
+      files,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+        hasMore: skip + files.length < total,
+      }
+    });
   } catch (error) {
     console.error("[Files] Error fetching files:", error);
     res.status(500).json({ message: "Failed to fetch files" });
@@ -528,5 +550,27 @@ export const restoreFile = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[Files] Error restoring file:", error);
     res.status(500).json({ message: "Failed to restore file" });
+  }
+};
+
+/**
+ * Get user storage info
+ * GET /api/files/storage
+ */
+export const getStorageInfo = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    res.json({
+      storageUsed: user.storageUsed || 0,
+      storageLimit: user.storageLimit || 20 * 1024 * 1024 * 1024, // Default 20GB
+    });
+  } catch (error) {
+    console.error("[Files] Error getting storage info:", error);
+    res.status(500).json({ message: "Failed to get storage info" });
   }
 };

@@ -97,7 +97,7 @@ export function DragDropZone({ children }: DragDropZoneProps) {
 
       // Check for folders using webkitGetAsEntry
       for (let i = 0; i < items.length; i++) {
-        const entry = items[i].webkitGetAsEntry?.();
+        const entry = items[i]?.webkitGetAsEntry?.();
         if (entry) {
           if (entry.isDirectory) {
             folderEntry = entry as FileSystemDirectoryEntry;

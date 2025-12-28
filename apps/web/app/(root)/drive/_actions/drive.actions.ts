@@ -4,60 +4,110 @@ import { revalidatePath } from "next/cache";
 import { apiGet, apiPost } from "../../../../lib/api-client";
 
 export interface DriveItem {
-  id: string; // Mapped from _id
+  id: string;
   name: string;
-  type: string; // "folder" | "file"
+  type: string;
   mimeType?: string;
   size?: number;
-  owner: string; // Mapped from ownerId (or populated)
+  owner: string;
   updatedAt: string;
   isStarred: boolean;
   isPublic?: boolean;
 }
 
-export async function getDriveItemsAction(folderId?: string) {
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+export interface DriveItemsResult {
+  success: boolean;
+  folders: DriveItem[];
+  files: DriveItem[];
+  foldersPagination?: PaginationInfo;
+  filesPagination?: PaginationInfo;
+  error?: string;
+}
+
+interface ApiFile {
+  _id: string;
+  name: string;
+  type?: string;
+  mimeType?: string;
+  size?: number;
+  updatedAt: string;
+  isStarred?: boolean;
+  isPublic?: boolean;
+}
+
+interface ApiFolder {
+  _id: string;
+  name: string;
+  updatedAt: string;
+  isStarred?: boolean;
+}
+
+export async function getDriveItemsAction(
+  folderId?: string,
+  options?: { page?: number; limit?: number; search?: string }
+): Promise<DriveItemsResult> {
   try {
+    const { page = 1, limit = 20, search } = options || {};
     let folders: DriveItem[] = [];
     let files: DriveItem[] = [];
+    let foldersPagination: PaginationInfo | undefined;
+    let filesPagination: PaginationInfo | undefined;
 
-    // Fetch folders (optional)
+    const queryParams = new URLSearchParams();
+    if (search) {
+      queryParams.set('search', search);
+    } else if (folderId) {
+      queryParams.set('parentFolderId', folderId);
+    }
+    queryParams.set('page', page.toString());
+    queryParams.set('limit', limit.toString());
+
+    // Fetch folders
     try {
-      const foldersRes = await apiGet(`/api/folders${folderId ? `?parentFolderId=${folderId}` : ''}`);
+      const foldersRes = await apiGet(`/api/folders?${queryParams.toString()}`);
       const foldersData = await foldersRes.json();
       
-      if (foldersData.success && Array.isArray(foldersData.data)) {
-        folders = foldersData.data.map((f: any) => ({
+      if (foldersData.folders && Array.isArray(foldersData.folders)) {
+        folders = foldersData.folders.map((f: ApiFolder) => ({
           id: f._id,
           name: f.name,
           type: "folder",
           owner: "me",
           updatedAt: f.updatedAt,
-          isStarred: f.isStarred,
+          isStarred: f.isStarred || false,
           size: undefined,
         }));
-      } else if (foldersData.folders && Array.isArray(foldersData.folders)) {
-        // Handle alternative API response format
-        folders = foldersData.folders.map((f: any) => ({
-          id: f._id,
-          name: f.name,
-          type: "folder",
-          owner: "me",
-          updatedAt: f.updatedAt,
-          isStarred: f.isStarred,
-          size: undefined,
-        }));
+        foldersPagination = foldersData.pagination;
       }
     } catch (folderError) {
       console.warn("Could not fetch folders:", folderError);
     }
 
-    // Fetch files (optional)
+    // Build files query params
+    const fileQueryParams = new URLSearchParams();
+    if (search) {
+      fileQueryParams.set('search', search);
+    } else if (folderId) {
+      fileQueryParams.set('folderId', folderId);
+    }
+    fileQueryParams.set('page', page.toString());
+    fileQueryParams.set('limit', limit.toString());
+
+    // Fetch files
     try {
-      const filesRes = await apiGet(`/api/files${folderId ? `?folderId=${folderId}` : ''}`);
+      const filesRes = await apiGet(`/api/files?${fileQueryParams.toString()}`);
       const filesData = await filesRes.json();
       
-      if (filesData.success && Array.isArray(filesData.data)) {
-        files = filesData.data.map((f: any) => ({
+      if (filesData.files && Array.isArray(filesData.files)) {
+        files = filesData.files.map((f: ApiFile) => ({
           id: f._id,
           name: f.name,
           type: f.type || "file",
@@ -65,32 +115,27 @@ export async function getDriveItemsAction(folderId?: string) {
           size: f.size,
           owner: "me",
           updatedAt: f.updatedAt,
-          isStarred: f.isStarred,
+          isStarred: f.isStarred || false,
           isPublic: f.isPublic || false,
         }));
-      } else if (filesData.files && Array.isArray(filesData.files)) {
-        // Handle alternative API response format
-        files = filesData.files.map((f: any) => ({
-          id: f._id,
-          name: f.name,
-          type: f.type || "file",
-          mimeType: f.mimeType,
-          size: f.size,
-          owner: "me",
-          updatedAt: f.updatedAt,
-          isStarred: f.isStarred,
-          isPublic: f.isPublic || false,
-        }));
+        filesPagination = filesData.pagination;
       }
     } catch (fileError) {
       console.warn("Could not fetch files:", fileError);
     }
 
-    return { success: true, folders, files };
+    return { success: true, folders, files, foldersPagination, filesPagination };
   } catch (error) {
     console.error("Error fetching drive items:", error);
     return { success: false, folders: [], files: [], error: "Failed to load drive items" };
   }
+}
+
+export async function searchDriveAction(query: string): Promise<DriveItemsResult> {
+  if (!query.trim()) {
+    return { success: true, folders: [], files: [] };
+  }
+  return getDriveItemsAction(undefined, { search: query, limit: 20 });
 }
 
 export async function createFolderAction(name: string, parentId?: string) {
@@ -107,7 +152,6 @@ export async function createFolderAction(name: string, parentId?: string) {
     }
 
     revalidatePath("/drive");
-    // API returns { message: "...", folder: {...} }
     return { success: true, folder: data.folder };
   } catch (error) {
     console.error("Error creating folder:", error);

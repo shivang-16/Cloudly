@@ -57,18 +57,28 @@ export const createFolder = async (req: Request, res: Response) => {
 export const getFolders = async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    const { parentFolderId, starred, trashed } = req.query;
-    console.log(user, "here isteh user")
+    const { parentFolderId, starred, trashed, search, page = "1", limit = "20" } = req.query;
+    
     if (!user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
     const query: any = { ownerId: user._id };
 
-    if (parentFolderId) {
-      query.parentFolderId = parentFolderId;
-    } else if (!trashed && !starred) {
-      query.parentFolderId = null; // Root level folders
+    // Search query - search in name
+    if (search && typeof search === "string" && search.trim()) {
+      query.name = { $regex: search.trim(), $options: "i" };
+    } else {
+      // Only apply folder filter if not searching
+      if (parentFolderId) {
+        query.parentFolderId = parentFolderId;
+      } else if (!trashed && !starred) {
+        query.parentFolderId = null; // Root level folders
+      }
     }
 
     if (starred === "true") {
@@ -81,9 +91,21 @@ export const getFolders = async (req: Request, res: Response) => {
       query.isTrashed = false;
     }
 
-    const folders = await Folder.find(query).sort({ updatedAt: -1 });
-    console.log(folders, "here isteh folders")
-    res.json({ folders });
+    const [folders, total] = await Promise.all([
+      Folder.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limitNum),
+      Folder.countDocuments(query),
+    ]);
+
+    res.json({ 
+      folders,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+        hasMore: skip + folders.length < total,
+      }
+    });
   } catch (error) {
     console.error("[Folders] Error fetching folders:", error);
     res.status(500).json({ message: "Failed to fetch folders" });

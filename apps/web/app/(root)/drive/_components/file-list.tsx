@@ -1,16 +1,20 @@
 "use client";
 
-import React from "react";
-import { FileText, Folder, Image, FileSpreadsheet, Presentation, Video, Music, Archive, Code, File, MoreVertical } from "lucide-react";
+import React, { useState, useEffect, useTransition } from "react";
+import { FileText, Folder, Image, FileSpreadsheet, Presentation, Video, Music, Archive, Code, File, MoreVertical, Loader2 } from "lucide-react";
 import { EmptyState } from "../../_components/empty-state";
 import { format } from "date-fns";
-import { DriveItem } from "../_actions/drive.actions";
-import { useRouter } from "next/navigation";
+import { DriveItem, getDriveItemsAction } from "../_actions/drive.actions";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FileContextMenu } from "./file-context-menu";
 
 interface FileListProps {
   initialFolders?: DriveItem[];
   initialFiles?: DriveItem[];
+  hasMoreFiles?: boolean;
+  hasMoreFolders?: boolean;
+  currentPage?: number;
+  searchQuery?: string;
 }
 
 // Get icon and color based on file extension/mimeType
@@ -66,13 +70,48 @@ const getFileIcon = (name: string, mimeType?: string) => {
   return { icon: File, bgColor: 'bg-gray-100 dark:bg-gray-800', iconColor: 'text-gray-500' };
 };
 
-export function FileList({ initialFolders = [], initialFiles = [] }: FileListProps) {
+export function FileList({ 
+  initialFolders = [], 
+  initialFiles = [], 
+  hasMoreFiles = false, 
+  hasMoreFolders = false,
+  currentPage = 1,
+  searchQuery: initialSearchQuery
+}: FileListProps) {
   const router = useRouter();
-  const items = [...initialFolders, ...initialFiles];
+  const searchParams = useSearchParams();
+  const currentSearch = searchParams.get('search') || "";
+  
+  const [folders, setFolders] = useState(initialFolders);
+  const [files, setFiles] = useState(initialFiles);
+  const [page, setPage] = useState(currentPage);
+  const [hasMore, setHasMore] = useState(hasMoreFiles || hasMoreFolders);
+  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
 
-  if (items.length === 0) {
-    return <EmptyState />;
-  }
+  // Re-fetch when search params change
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const result = await getDriveItemsAction(undefined, { 
+        search: currentSearch || undefined, 
+        page: 1, 
+        limit: 20 
+      });
+      
+      if (result.success) {
+        setFolders(result.folders);
+        setFiles(result.files);
+        setPage(1);
+        setHasMore(result.filesPagination?.hasMore || result.foldersPagination?.hasMore || false);
+      }
+      setIsLoading(false);
+    };
+    
+    fetchData();
+  }, [currentSearch]);
+
+  const items = [...folders, ...files];
 
   const formatSize = (bytes?: number) => {
     if (bytes === undefined || bytes === null) return "—";
@@ -98,9 +137,47 @@ export function FileList({ initialFolders = [], initialFiles = [] }: FileListPro
     }
   };
 
+  const loadMore = () => {
+    startTransition(async () => {
+      const nextPage = page + 1;
+      const result = await getDriveItemsAction(undefined, { 
+        page: nextPage, 
+        limit: 20,
+        search: currentSearch || undefined 
+      });
+      
+      if (result.success) {
+        setFolders(prev => [...prev, ...result.folders]);
+        setFiles(prev => [...prev, ...result.files]);
+        setPage(nextPage);
+        setHasMore(result.filesPagination?.hasMore || result.foldersPagination?.hasMore || false);
+      }
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="mt-8 flex-1 flex flex-col min-h-0">
+        <h2 className="text-base font-medium text-gray-800 dark:text-gray-200 mb-4 px-4">Files</h2>
+        <div className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 text-gray-500">
+            <Loader2 size={32} className="animate-spin" />
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return <EmptyState />;
+  }
+
   return (
     <div className="mt-8 flex-1 flex flex-col min-h-0">
-      <h2 className="text-base font-medium text-gray-800 dark:text-gray-200 mb-4 px-4">Files</h2>
+      <h2 className="text-base font-medium text-gray-800 dark:text-gray-200 mb-4 px-4">
+        {currentSearch ? `Search results for "${currentSearch}"` : "Files"}
+      </h2>
       
       <div className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex flex-col min-h-0">
         {/* Header */}
@@ -158,15 +235,34 @@ export function FileList({ initialFolders = [], initialFiles = [] }: FileListPro
                             <MoreVertical size={16} />
                           </button>
                         ) : (
-                          <FileContextMenu file={{ id: item.id, name: item.name, isPublic: item.isPublic }} />
+                          <FileContextMenu file={{ id: item.id, name: item.name, isPublic: item.isPublic, isStarred: item.isStarred }} />
                         )}
                     </div>
                 </div>
               );
            })}
+
+           {/* Load More Button - Inside Scroll Container */}
+           {hasMore && (
+             <div className="p-4 flex justify-center">
+               <button
+                 onClick={loadMore}
+                 disabled={isPending}
+                 className="px-6 py-2 bg-transparent text-blue-600 border border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-sm font-medium transition-colors flex items-center gap-2"
+               >
+                 {isPending ? (
+                   <>
+                     <Loader2 size={16} className="animate-spin" />
+                     Loading...
+                   </>
+                 ) : (
+                   "Load More"
+                 )}
+               </button>
+             </div>
+           )}
         </div>
       </div>
     </div>
   );
 }
-

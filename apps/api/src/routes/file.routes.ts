@@ -13,6 +13,7 @@ import {
   streamFile,
   streamPublicFile,
   restoreFile,
+  getStorageInfo,
 } from "../controllers/file.controller";
 
 const router: Router = Router();
@@ -28,6 +29,9 @@ router.use(checkAuth);
 router.post("/upload-url", getUploadUrl);
 router.post("/confirm-upload", confirmUpload);
 
+// Storage
+router.get("/storage", getStorageInfo);
+
 // File CRUD
 router.get("/", getFiles);
 router.get("/:id/download", getDownloadUrl);
@@ -39,3 +43,4 @@ router.patch("/:id/restore", restoreFile);
 router.delete("/:id", deleteFile);
 
 export default router;
+
