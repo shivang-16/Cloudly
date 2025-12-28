@@ -2,7 +2,9 @@ import React from "react";
 import { Header } from "./_components/header";
 import { Sidebar } from "./_components/sidebar";
 import { UploadProvider } from "./_context/upload-context";
+import { SidebarProvider } from "./_context/sidebar-context";
 import { UploadPanel } from "./_components/upload-panel";
+import { MobileFab } from "./_components/mobile-fab";
 import { DragDropZone } from "./_components/drag-drop-zone";
 import { apiGet } from "../../lib/api-client";
 
@@ -28,20 +30,23 @@ export default async function MainLayout({
 
   return (
     <UploadProvider>
-      <div className="flex flex-col h-screen bg-white dark:bg-[#18191a]">
-        <Header />
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar storageUsed={storage.storageUsed} />
-          <main className="flex-1 bg-white dark:bg-[#18191a] rounded-tl-2xl overflow-hidden shadow-none border border-transparent dark:border-none p-2 pt-0">
-            <DragDropZone>
-              <div className="h-full w-full bg-white dark:bg-[#131314] rounded-2xl overflow-y-auto p-4 shadow-sm border border-gray-100 dark:border-none">
-                {children}
-              </div>
-            </DragDropZone>
-          </main>
+      <SidebarProvider>
+        <div className="flex flex-col min-h-screen bg-white dark:bg-[#18191a]">
+          <Header />
+          <div className="flex flex-1">
+            <Sidebar storageUsed={storage.storageUsed} />
+            <main className="flex-1 bg-white dark:bg-[#18191a] rounded-tl-2xl shadow-none border border-transparent dark:border-none p-2 pt-0">
+              <DragDropZone>
+                <div className="w-full bg-white dark:bg-[#131314] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-none min-h-[calc(100vh-6rem)]">
+                  {children}
+                </div>
+              </DragDropZone>
+            </main>
+          </div>
         </div>
-      </div>
-      <UploadPanel />
+        <UploadPanel />
+        <MobileFab />
+      </SidebarProvider>
     </UploadProvider>
   );
 }

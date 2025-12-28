@@ -26,7 +26,7 @@ export function UploadPanel() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 w-[360px] bg-white dark:bg-[#1e1e1e] rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+    <div className="fixed bottom-0 right-0 w-full sm:w-[360px] sm:bottom-4 sm:right-4 bg-white dark:bg-[#1e1e1e] rounded-t-xl sm:rounded-lg shadow-xl border-t sm:border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
       {/* Header */}
       <div 
         className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#2d2d2d] cursor-pointer"

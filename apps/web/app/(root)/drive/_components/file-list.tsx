@@ -198,9 +198,10 @@ export function FileList({
         {currentSearch && isMainDrivePage ? `Search results for "${currentSearch}"` : "Files"}
       </h2>
       
-      <div className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex flex-col min-h-0">
+      
+      <div className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col">
         {/* Header */}
-        <div className="grid grid-cols-[3fr,1.5fr,1fr,1fr,auto] gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1e1e1e] sticky top-0 z-10">
+        <div className="grid grid-cols-[1fr,auto] md:grid-cols-[3fr,1.5fr,1fr,auto] lg:grid-cols-[3fr,1.5fr,1fr,1fr,auto] gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1e1e1e] sticky top-0 z-10">
            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</div>
            <div className="text-sm font-medium text-gray-500 dark:text-gray-400 hidden md:block">Owner</div>
            <div className="text-sm font-medium text-gray-500 dark:text-gray-400 hidden md:block">Date modified</div>
@@ -209,7 +210,7 @@ export function FileList({
         </div>
 
         {/* File Rows */}
-        <div className="divide-y divide-gray-100 dark:divide-gray-700 overflow-y-auto">
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
            {items.map((item) => {
               const fileInfo = item.type === "folder" 
                 ? { icon: Folder, bgColor: 'bg-gray-100 dark:bg-gray-800', iconColor: 'fill-gray-500 text-gray-500 dark:fill-gray-400 dark:text-gray-400' }
@@ -220,7 +221,7 @@ export function FileList({
                 <div 
                   key={item.id} 
                   onClick={() => handleItemClick(item)}
-                  className="group grid grid-cols-[3fr,1.5fr,1fr,1fr,auto] gap-4 px-4 py-3 hover:bg-blue-50 dark:hover:bg-[#2d2d2d] cursor-pointer transition-colors items-center"
+                  className="group grid grid-cols-[1fr,auto] md:grid-cols-[3fr,1.5fr,1fr,auto] lg:grid-cols-[3fr,1.5fr,1fr,1fr,auto] gap-4 px-4 py-3 hover:bg-blue-50 dark:hover:bg-[#2d2d2d] cursor-pointer transition-colors items-center"
                 >
                     <div className="flex items-center gap-3 overflow-hidden">
                        <div className={`w-8 h-8 flex-shrink-0 rounded flex items-center justify-center ${fileInfo.bgColor}`}>
@@ -249,11 +250,7 @@ export function FileList({
                       className="w-8 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                     >
-                        {item.type === "folder" ? (
-                          <button className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full text-gray-600 dark:text-gray-300">
-                            <MoreVertical size={16} />
-                          </button>
-                        ) : (
+                        {item.type !== "folder" && (
                           <FileContextMenu file={{ id: item.id, name: item.name, isPublic: item.isPublic, isStarred: item.isStarred }} />
                         )}
                     </div>

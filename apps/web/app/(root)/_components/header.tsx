@@ -6,6 +6,7 @@ import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSidebar } from "../_context/sidebar-context";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -49,7 +50,7 @@ function HeaderSearch() {
   };
 
   return (
-    <div className="flex-1 max-w-2xl px-4">
+    <div className="flex-1 max-w-4xl px-2 md:px-8">
       <div className="relative group">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search size={24} className="text-gray-500 dark:text-gray-400" />
@@ -58,7 +59,7 @@ function HeaderSearch() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="block w-full pl-12 pr-12 py-3 rounded-full bg-[#e9eef6] dark:bg-[#282a2c] focus:bg-white dark:focus:bg-[#1e1e1e] border border-transparent focus:border-transparent focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-600 placeholder-gray-600 dark:placeholder-gray-400 text-gray-800 dark:text-gray-200 sm:text-base transition-all shadow-sm focus:shadow-md"
+          className="block w-full pl-10 pr-10 md:pl-12 md:pr-12 py-2 md:py-3 rounded-full bg-[#f1f3f4] dark:bg-[#282a2c] focus:bg-white dark:focus:bg-[#1e1e1e] border border-transparent focus:border-transparent focus:ring-1 focus:ring-gray-300 dark:focus:ring-gray-600 placeholder-gray-600 dark:placeholder-gray-400 text-gray-800 dark:text-gray-200 text-sm sm:text-base transition-all shadow-none focus:shadow-md"
           placeholder="Search in Cloudly"
         />
         <div className="absolute inset-y-0 right-0 pr-4 flex items-center gap-2">
@@ -75,24 +76,28 @@ function HeaderSearch() {
 
 export function Header() {
   const { theme, setTheme } = useTheme();
+  const { toggle } = useSidebar();
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 py-2 bg-white dark:bg-[#18191a]">
+    <header className="sticky top-0 z-50 w-full h-16 flex items-center justify-between px-4 py-2 bg-white dark:bg-[#18191a] border-b border-transparent dark:border-gray-800 transition-colors">
       <div className="flex items-center gap-3 w-60">
-        <div className="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full lg:hidden">
+        <button 
+          onClick={toggle}
+          className="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full lg:hidden"
+        >
             <Menu size={24} className="text-gray-600 dark:text-gray-300" />
-        </div>
-        <Link href="/drive" className="flex items-center gap-2">
+        </button>
+        <Link href="/drive" className="flex items-center gap-1 md:gap-2">
            <img 
             src="/cloudly_logo.png" 
             alt="Cloudly" 
-            className="w-16 h-15"
+            className="w-10 h-auto md:w-16 md:h-15"
           />
-          <span className="text-xl font-normal text-gray-600 dark:text-gray-200">Cloudly</span>
+          <span className="text-xl font-normal text-gray-600 dark:text-gray-200 hidden md:block">Cloudly</span>
         </Link>
       </div>
 

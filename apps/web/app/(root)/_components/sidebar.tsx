@@ -16,6 +16,7 @@ import clsx from "clsx";
 import { NewFolderModal } from "./new-folder-modal";
 import { createFolderAction } from "../drive/_actions/drive.actions";
 import { useUpload } from "../_context/upload-context";
+import { useSidebar } from "../_context/sidebar-context";
 
 const navItems = [
   { name: "Home", icon: Home, href: "/drive" },
@@ -28,6 +29,7 @@ const STORAGE_LIMIT_BYTES = STORAGE_LIMIT_GB * 1024 * 1024 * 1024;
 
 export function Sidebar({ storageUsed = 0 }: { storageUsed?: number }) {
   const pathname = usePathname();
+  const { isOpen, close } = useSidebar();
   const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -126,108 +128,125 @@ export function Sidebar({ storageUsed = 0 }: { storageUsed?: number }) {
   };
 
   return (
-    <aside className="w-64 flex flex-col pt-2 pb-4 h-full overflow-y-auto">
-      {/* Hidden Inputs for File/Folder Upload */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileUpload} 
-        className="hidden" 
-      />
-      <input 
-        type="file" 
-        ref={folderInputRef} 
-        onChange={handleFolderUpload} 
-        className="hidden" 
-        {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)} 
-      />
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={close}
+        />
+      )}
 
-      <div className="pl-3 mb-6 relative" ref={menuRef}>
-        <button 
-            onClick={() => setIsNewMenuOpen(!isNewMenuOpen)}
-            disabled={isStorageFull}
-            className={clsx(
-              "flex items-center gap-3 bg-white dark:bg-[#1e1e1e] shadow-md dark:shadow-none dark:border-gray-600 border border-transparent dark:border rounded-2xl px-4 py-4 transition-all",
-              isStorageFull 
-                ? "opacity-50 cursor-not-allowed" 
-                : "hover:bg-gray-50 dark:hover:bg-[#2d2d2d] active:shadow-sm"
-            )}
-        >
-          <Plus size={24} className="text-gray-600 dark:text-gray-200" />
-          <span className="font-medium text-gray-700 dark:text-gray-200">New</span>
-        </button>
+      <aside 
+        className={clsx(
+          "flex flex-col pt-2 pb-4 overflow-y-auto bg-white dark:bg-[#18191a] transition-transform duration-300 ease-in-out z-30",
+          "fixed inset-y-0 left-0 w-64 h-full",
+          "lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Hidden Inputs for File/Folder Upload */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileUpload} 
+          className="hidden" 
+        />
+        <input 
+          type="file" 
+          ref={folderInputRef} 
+          onChange={handleFolderUpload} 
+          className="hidden" 
+          {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)} 
+        />
 
-        {isNewMenuOpen && !isStorageFull && (
-            <div className="absolute top-full left-4 mt-1 w-64 bg-white dark:bg-[#1e1e1e] rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <button 
-                  onClick={() => {
-                      setIsNewFolderModalOpen(true);
-                      setIsNewMenuOpen(false);
-                  }}
-                  className="w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-[#202124] dark:text-[#e3e3e3]"
-                >
-                    <FolderPlus size={20} className="text-gray-500 dark:text-gray-400" />
-                    New folder
-                </button>
-                
-                <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
-                
-                <button 
-                   onClick={() => {
-                       fileInputRef.current?.click();
-                       setIsNewMenuOpen(false);
-                   }}
-                   className="w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-[#202124] dark:text-[#e3e3e3]"
-                >
-                    <FileUp size={20} className="text-gray-500 dark:text-gray-400" />
-                    File upload
-                </button>
-                <button 
+        <div className="pl-3 mb-6 relative" ref={menuRef}>
+          <button 
+              onClick={() => setIsNewMenuOpen(!isNewMenuOpen)}
+              disabled={isStorageFull}
+              className={clsx(
+                "flex items-center gap-3 bg-white dark:bg-[#1e1e1e] shadow-md dark:shadow-none dark:border-gray-600 border border-transparent dark:border rounded-2xl px-4 py-4 transition-all",
+                isStorageFull 
+                  ? "opacity-50 cursor-not-allowed" 
+                  : "hover:bg-gray-50 dark:hover:bg-[#2d2d2d] active:shadow-sm"
+              )}
+          >
+            <Plus size={24} className="text-gray-600 dark:text-gray-200" />
+            <span className="font-medium text-gray-700 dark:text-gray-200">New</span>
+          </button>
+
+          {isNewMenuOpen && !isStorageFull && (
+              <div className="absolute top-full left-4 mt-1 w-64 bg-white dark:bg-[#1e1e1e] rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <button 
                     onClick={() => {
-                        folderInputRef.current?.click();
+                        setIsNewFolderModalOpen(true);
                         setIsNewMenuOpen(false);
                     }}
                     className="w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-[#202124] dark:text-[#e3e3e3]"
-                >
-                    <FolderUp size={20} className="text-gray-500 dark:text-gray-400" />
-                    Folder upload
-                </button>
-            </div>
-        )}
-      </div>
-
-      <nav className="flex-1">
-        {navItems.map((item) => (
-          <NavItem key={item.name} {...item} />
-        ))}
-      </nav>
-
-      {/* Storage Progress */}
-      <div className="px-6 mt-4">
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          {formatStorage(storageUsed)} of {STORAGE_LIMIT_GB} GB used
+                  >
+                      <FolderPlus size={20} className="text-gray-500 dark:text-gray-400" />
+                      New folder
+                  </button>
+                  
+                  <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
+                  
+                  <button 
+                     onClick={() => {
+                         fileInputRef.current?.click();
+                         setIsNewMenuOpen(false);
+                     }}
+                     className="w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-[#202124] dark:text-[#e3e3e3]"
+                  >
+                      <FileUp size={20} className="text-gray-500 dark:text-gray-400" />
+                      File upload
+                  </button>
+                  <button 
+                      onClick={() => {
+                          folderInputRef.current?.click();
+                          setIsNewMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-[#202124] dark:text-[#e3e3e3]"
+                  >
+                      <FolderUp size={20} className="text-gray-500 dark:text-gray-400" />
+                      Folder upload
+                  </button>
+              </div>
+          )}
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4 overflow-hidden">
-          <div 
-            className={clsx(
-              "h-1.5 rounded-full transition-all",
-              storagePercentage > 90 ? "bg-red-500" : storagePercentage > 70 ? "bg-yellow-500" : "bg-blue-600"
-            )} 
-            style={{ width: `${Math.max(storagePercentage, 1)}%` }}
-          />
-        </div>
-        {isStorageFull && (
-          <p className="text-xs text-red-500 mb-2">Storage full! Delete files to upload more.</p>
-        )}
-      </div>
 
-      {/* Modals */}
-      <NewFolderModal 
-        isOpen={isNewFolderModalOpen} 
-        onClose={() => setIsNewFolderModalOpen(false)}
-        onCreate={handleCreateFolder}
-      />
-    </aside>
+        <nav className="flex-1">
+          {navItems.map((item) => (
+            <NavItem key={item.name} {...item} />
+          ))}
+        </nav>
+
+        {/* Storage Progress */}
+        <div className="px-6 mt-4">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            {formatStorage(storageUsed)} of {STORAGE_LIMIT_GB} GB used
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4 overflow-hidden">
+            <div 
+              className={clsx(
+                "h-1.5 rounded-full transition-all",
+                storagePercentage > 90 ? "bg-red-500" : storagePercentage > 70 ? "bg-yellow-500" : "bg-blue-600"
+              )} 
+              style={{ width: `${Math.max(storagePercentage, 1)}%` }}
+            />
+          </div>
+          {isStorageFull && (
+            <p className="text-xs text-red-500 mb-2">Storage full! Delete files to upload more.</p>
+          )}
+        </div>
+
+        {/* Modals */}
+        <NewFolderModal 
+          isOpen={isNewFolderModalOpen} 
+          onClose={() => setIsNewFolderModalOpen(false)}
+          onCreate={handleCreateFolder}
+        />
+      </aside>
+    </>
   );
 }
 
