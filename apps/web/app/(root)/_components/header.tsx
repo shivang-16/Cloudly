@@ -1,10 +1,18 @@
 "use client";
 
 import React from "react";
-import { Search, Settings, HelpCircle, LayoutGrid, Menu, SlidersHorizontal } from "lucide-react";
+import { Search, Settings, HelpCircle, Menu, SlidersHorizontal, Sun, Moon } from "lucide-react";
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
+import { useTheme } from "next-themes";
 
 export function Header() {
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
   return (
     <header className="h-16 flex items-center justify-between px-4 py-2 bg-white dark:bg-[#18191a]">
       <div className="flex items-center gap-3 w-60">
@@ -39,26 +47,32 @@ export function Header() {
 
       <div className="flex items-center gap-2 pl-4">
           <div className="flex items-center gap-1">
-             <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300">
-                <LayoutGrid size={24} /> 
-            </button>
             <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300">
                <HelpCircle size={24} />
             </button>
             <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300">
                <Settings size={24} />
             </button>
+            {/* Theme Toggle */}
+            <button 
+              onClick={toggleTheme}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300"
+              aria-label="Toggle theme"
+            >
+               {theme === "dark" ? <Sun size={24} /> : <Moon size={24} />}
+            </button>
           </div>
           
           <div className="pl-3 flex items-center gap-3">
-             <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300">
-               <LayoutGrid size={24} /> 
-            </button>
-            <button className="rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 ml-1">
-               <div className="bg-purple-600 w-8 h-8 flex items-center justify-center text-white text-sm font-medium">
-                  S 
-               </div>
-            </button>
+            {/* Clerk User Button */}
+            <UserButton 
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8"
+                }
+              }}
+            />
           </div>
       </div>
     </header>
