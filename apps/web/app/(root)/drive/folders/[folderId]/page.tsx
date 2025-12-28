@@ -26,7 +26,7 @@ export default async function FolderPage({ params }: FolderPageProps) {
 
       <h1 className="text-2xl text-gray-700 dark:text-gray-200 mb-6 px-1">Folder Contents</h1>
       
-      <FileList initialFolders={folders || []} initialFiles={files || []} />
+      <FileList initialFolders={folders || []} initialFiles={files || []} folderId={folderId} />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { FileText, Folder, Image, FileSpreadsheet, Presentation, Video, Music, A
 import { EmptyState } from "../../_components/empty-state";
 import { format } from "date-fns";
 import { DriveItem, getDriveItemsAction } from "../_actions/drive.actions";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { FileContextMenu } from "./file-context-menu";
 
 interface FileListProps {
@@ -15,6 +15,7 @@ interface FileListProps {
   hasMoreFolders?: boolean;
   currentPage?: number;
   searchQuery?: string;
+  folderId?: string; // The folder we're viewing
 }
 
 // Get icon and color based on file extension/mimeType
@@ -76,11 +77,16 @@ export function FileList({
   hasMoreFiles = false, 
   hasMoreFolders = false,
   currentPage = 1,
-  searchQuery: initialSearchQuery
+  searchQuery: initialSearchQuery,
+  folderId
 }: FileListProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentSearch = searchParams.get('search') || "";
+  
+  // Determine if we're on the main drive page (where search applies)
+  const isMainDrivePage = pathname === '/drive';
   
   const [folders, setFolders] = useState(initialFolders);
   const [files, setFiles] = useState(initialFiles);
@@ -89,8 +95,13 @@ export function FileList({
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Re-fetch when search params change
+  // Re-fetch ONLY when search params change on the main drive page
   useEffect(() => {
+    // Skip refetch if we're not on main drive page OR if there's no search
+    if (!isMainDrivePage) {
+      return;
+    }
+    
     const fetchData = async () => {
       setIsLoading(true);
       const result = await getDriveItemsAction(undefined, { 
@@ -109,7 +120,15 @@ export function FileList({
     };
     
     fetchData();
-  }, [currentSearch]);
+  }, [currentSearch, isMainDrivePage]);
+
+  // Reset state when initial data changes (for folder navigation)
+  useEffect(() => {
+    setFolders(initialFolders);
+    setFiles(initialFiles);
+    setHasMore(hasMoreFiles || hasMoreFolders);
+    setPage(currentPage);
+  }, [initialFolders, initialFiles, hasMoreFiles, hasMoreFolders, currentPage]);
 
   const items = [...folders, ...files];
 
@@ -140,10 +159,10 @@ export function FileList({
   const loadMore = () => {
     startTransition(async () => {
       const nextPage = page + 1;
-      const result = await getDriveItemsAction(undefined, { 
+      const result = await getDriveItemsAction(folderId, { 
         page: nextPage, 
         limit: 20,
-        search: currentSearch || undefined 
+        search: isMainDrivePage ? (currentSearch || undefined) : undefined
       });
       
       if (result.success) {
@@ -176,7 +195,7 @@ export function FileList({
   return (
     <div className="mt-8 flex-1 flex flex-col min-h-0">
       <h2 className="text-base font-medium text-gray-800 dark:text-gray-200 mb-4 px-4">
-        {currentSearch ? `Search results for "${currentSearch}"` : "Files"}
+        {currentSearch && isMainDrivePage ? `Search results for "${currentSearch}"` : "Files"}
       </h2>
       
       <div className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex flex-col min-h-0">

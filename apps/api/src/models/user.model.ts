@@ -8,7 +8,7 @@ export interface IUser extends Omit<Document, "_id"> {
   username: string;
   avatarUrl?: string;
   storageUsed: number; // in bytes
-  storageLimit: number; // in bytes (default 15GB for free tier)
+  storageLimit: number; // in bytes (default 20GB for free tier)
   createdAt: Date;
   updatedAt: Date;
 }

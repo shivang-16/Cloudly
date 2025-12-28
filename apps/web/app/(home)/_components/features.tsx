@@ -5,15 +5,15 @@ import React, { useState } from "react";
 const features = [
   {
     title: "Storage that grows with you",
-    description: "Scale your storage effortlessly from 15 GB to 5 TB per user, plus the ability to request additional storage. Storage costs vary.",
+    description: "Scale your storage effortlessly from 20 GB to 5 TB per user, plus the ability to request additional storage. Storage costs vary.",
   },
   {
     title: "Gmail attachments straight to Drive",
-    description: "",
+    description: "Save email attachments directly to your Cloudly Drive with one click. Keep all your important files organized and easily accessible.",
   },
   {
     title: "Scan documents with Drive",
-    description: "",
+    description: "Use your phone's camera to scan receipts, documents, and notes. Cloudly automatically converts them to searchable PDFs.",
   }
 ];
 

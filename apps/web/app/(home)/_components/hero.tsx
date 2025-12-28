@@ -34,7 +34,7 @@ export function Hero() {
             {/* Main Dashboard Image */}
            <div className="relative w-full max-w-[800px] aspect-[4/3] md:translate-x-12 lg:translate-x-16">
              <img 
-               src="/landing1.png"
+               src="/landing1.jpg"
                alt="Cloudly Dashboard" 
                className="w-full h-full object-contain"
              />

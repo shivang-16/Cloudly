@@ -30,12 +30,15 @@ export function ShareModal({ isOpen, onClose, file }: ShareModalProps) {
     return () => setMounted(false);
   }, []);
 
+  // Only sync state when the file ID changes (opening modal for different file)
   useEffect(() => {
     setIsPublic(file.isPublic);
     if (file.isPublic) {
       setPublicUrl(`${window.location.origin}/public/file/${file.id}`);
+    } else {
+      setPublicUrl(null);
     }
-  }, [file]);
+  }, [file.id]); // Only depend on file.id, not the entire file object
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
