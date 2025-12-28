@@ -1,6 +1,6 @@
 # Cloudly
 
-Cloudly is a modern cloud storage solution allowing users to securely upload, manage, and share files upto 20GB completely for free. It is built as a monorepo using Turborepo, featuring a Next.js frontend and an Express.js/Node.js backend.
+Cloudly is a modern cloud storage solution allowing users to securely upload, manage, and share files upto 20GB completely for free. It features **direct client-to-S3 uploads using presigned URLs**, ensuring high performance and scalability. It is built as a monorepo using Turborepo, featuring a Next.js frontend and an Express.js/Node.js backend.
 
 ## Structure
 
@@ -109,3 +109,19 @@ You can run both apps simultaneously from the root:
 ```sh
 pnpm dev
 ```
+
+---
+
+## Architecture
+
+## File Uploads
+
+File uploads are handled efficiently using **AWS S3 Presigned URLs**. This allows the client to upload files directly to S3 without passing through the backend server, reducing load and improving performance for large files.
+
+## Deployment
+
+Both the Web and API applications are deployed on Vercel:
+
+- **Web App**: [https://cloudly-web.vercel.app/](https://cloudly-web.vercel.app/)
+- **API Server**: [https://cloudly-api.vercel.app/](https://cloudly-api.vercel.app/)
+
