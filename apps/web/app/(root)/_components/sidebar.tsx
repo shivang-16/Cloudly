@@ -21,7 +21,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { NewFolderModal } from "./new-folder-modal";
 import { createFolderAction } from "../drive/_actions/drive.actions";
-import { toast } from "sonner"; // Optional: Add toast notifications
+import { useUpload } from "../_context/upload-context";
 
 const navItems = [
   { name: "Home", icon: Home, href: "/drive" },
@@ -48,6 +48,8 @@ export function Sidebar() {
   const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  
+  const { addFiles, addFolderFiles } = useUpload();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -61,19 +63,22 @@ export function Sidebar() {
     };
   }, []);
 
-  // Handle File Upload
+  // Handle File Upload - use upload context
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      console.log("File selected:", e.target.files[0]);
-      // TODO: Implement actual upload logic
+      const files = Array.from(e.target.files);
+      addFiles(files);
+      // Reset input so same file can be selected again
+      e.target.value = "";
     }
   };
 
-  // Handle Folder Upload
+  // Handle Folder Upload - use upload context
   const handleFolderUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-        console.log("Folder selected:", e.target.files);
-        // TODO: Implement actual upload logic
+      addFolderFiles(e.target.files);
+      // Reset input so same folder can be selected again
+      e.target.value = "";
     }
   };
 

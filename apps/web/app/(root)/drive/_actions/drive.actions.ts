@@ -104,7 +104,8 @@ export async function createFolderAction(name: string, parentId?: string) {
     }
 
     revalidatePath("/drive");
-    return { success: true, folder: data.data };
+    // API returns { message: "...", folder: {...} }
+    return { success: true, folder: data.folder };
   } catch (error) {
     console.error("Error creating folder:", error);
     return { success: false, error: "An unexpected error occurred" };
